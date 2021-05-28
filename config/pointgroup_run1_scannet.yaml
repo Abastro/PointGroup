@@ -16,7 +16,7 @@ DATA:
   scale: 50   # voxel_size = 1 / scale, scale 50(2cm)
   batch_size: 4
   full_scale: [128, 512]
-  max_npoint: 250000
+  max_npoint: 150000
   mode: 4 # 4=mean
 
 STRUCTURE:

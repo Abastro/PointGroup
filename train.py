@@ -137,6 +137,9 @@ if __name__ == '__main__':
     if model_name == 'pointgroup':
         from model.pointgroup.pointgroup import PointGroup as Network
         from model.pointgroup.pointgroup import model_fn_decorator
+    elif model_name == 'pointgroup_alt':
+        from model.pointgroup.pointgroup_alt import PointGroup as Network
+        from model.pointgroup.pointgroup_alt import model_fn_decorator
     else:
         print("Error: no model - " + model_name)
         exit(0)

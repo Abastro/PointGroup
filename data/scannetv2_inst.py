@@ -15,6 +15,8 @@ from util.config import cfg
 from util.log import logger
 from lib.pointgroup_ops.functions import pointgroup_ops
 
+import random
+
 class Dataset:
     def __init__(self, test=False):
         self.data_root = cfg.data_root
@@ -39,6 +41,7 @@ class Dataset:
     def trainLoader(self):
         train_file_names = sorted(glob.glob(os.path.join(self.data_root, self.dataset, 'train', '*' + self.filename_suffix)))
         self.train_files = [torch.load(i) for i in train_file_names]
+        self.train_files = self.train_files[:40]
 
         logger.info('Training samples: {}'.format(len(self.train_files)))
 
@@ -50,6 +53,7 @@ class Dataset:
     def valLoader(self):
         val_file_names = sorted(glob.glob(os.path.join(self.data_root, self.dataset, 'val', '*' + self.filename_suffix)))
         self.val_files = [torch.load(i) for i in val_file_names]
+        self.val_files = self.val_files[:20]
 
         logger.info('Validation samples: {}'.format(len(self.val_files)))
 
@@ -97,7 +101,7 @@ class Dataset:
         '''
         instance_info = np.ones((xyz.shape[0], 9), dtype=np.float32) * -100.0   # (n, 9), float, (cx, cy, cz, minx, miny, minz, maxx, maxy, maxz)
         instance_pointnum = []   # (nInst), int
-        instance_num = int(instance_label.max()) + 1
+        instance_num = int(instance_label.max(initial = -1)) + 1
         for i_ in range(instance_num):
             inst_idx_i = np.where(instance_label == i_)
 
@@ -152,9 +156,9 @@ class Dataset:
     def getCroppedInstLabel(self, instance_label, valid_idxs):
         instance_label = instance_label[valid_idxs]
         j = 0
-        while (j < instance_label.max()):
+        while (j < instance_label.max(initial = -1)):
             if (len(np.where(instance_label == j)[0]) == 0):
-                instance_label[instance_label == instance_label.max()] = j
+                instance_label[instance_label == instance_label.max(initial = -1)] = j
             j += 1
         return instance_label
 
