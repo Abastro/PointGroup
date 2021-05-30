@@ -41,7 +41,7 @@ class Dataset:
     def trainLoader(self):
         train_file_names = sorted(glob.glob(os.path.join(self.data_root, self.dataset, 'train', '*' + self.filename_suffix)))
         self.train_files = [torch.load(i) for i in train_file_names]
-        self.train_files = self.train_files[:40]
+        self.train_files = self.train_files[:80]
 
         logger.info('Training samples: {}'.format(len(self.train_files)))
 

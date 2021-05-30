@@ -260,6 +260,7 @@ class PointGroup(nn.Module):
         :param batch_offsets: (B + 1), int, cuda
         '''
         ret = {}
+        # TODO Detect source of NaN
 
         output = self.input_conv(input)
         output = self.unet(output)
