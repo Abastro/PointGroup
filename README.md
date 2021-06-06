@@ -26,3 +26,6 @@ futhark cuda src/cluster.fut
 Then, run
 `CFLAGS=-fopenmp python setup.py develop`
 to develop.
+
+Lastly, setup the dataset according to PointGroup,
+and change the model into `pointgroup_alt` to run the program.
