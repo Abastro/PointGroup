@@ -1,7 +1,7 @@
 GENERAL:
   task: train  # train, test
   manual_seed: 123
-  model_dir: model/pointgroup/pointgroup.py
+  model_dir: model/pointgroup/pointgroup_alt.py
   dataset_dir: data/scannetv2_inst.py
 
 DATA:
@@ -12,15 +12,17 @@ DATA:
   classes: 20
   ignore_label: -100
 
+  num_train_use: 30
+
   input_channel: 3
   scale: 50   # voxel_size = 1 / scale, scale 50(2cm)
   batch_size: 4
   full_scale: [128, 512]
-  max_npoint: 150000
+  max_npoint: 250000
   mode: 4 # 4=mean
 
 STRUCTURE:
-  model_name: pointgroup
+  model_name: pointgroup_alt
   m: 16 # 16 or 32
   block_residual: True
   block_reps: 2
@@ -37,7 +39,7 @@ TRAIN:
   momentum: 0.9
   weight_decay: 0.0001
   save_freq: 16  # also eval_freq
-  loss_weight: [1.0, 1.0, 1.0, 1.0] # semantic_loss, offset_norm_loss, offset_dir_loss, score_loss
+  loss_weight: [1.0, 1.0, 1.0, 1.0] # semantic_loss, offset_norm_loss, offset_dir_loss(size_loss), score_loss
 
   fg_thresh: 0.75
   bg_thresh: 0.25
@@ -46,24 +48,34 @@ TRAIN:
   score_fullscale: 14
   score_mode: 4 # mean
 
+  semantic_score: false # Use semantic score in place of ScoreNet
+
+  size_loss: true
+  use_coord: pq
+  use_score_net: true
+
   pretrain_path:
   pretrain_module: []
   fix_module: []
 
 GROUP:
   ### point grouping
-  cluster_radius: 0.03
+  cuda_cluster_enable: true
+
+  cluster_radius: 0.05
   cluster_meanActive: 50
   cluster_shift_meanActive: 300
   cluster_npoint_thre: 50
 
-  prepare_epochs: 128
+  prepare_epochs: 128 # original: 128
 
 TEST:
   split: val
   test_epoch: 384
   test_workers: 16
   test_seed: 567
+
+  test_runtime: true
 
   TEST_NMS_THRESH: 0.3
   TEST_SCORE_THRESH: 0.09
@@ -72,4 +84,4 @@ TEST:
   eval: True
   save_semantic: False
   save_pt_offsets: False
-  save_instance: False
+  save_instance: True

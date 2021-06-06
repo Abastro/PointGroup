@@ -23,6 +23,8 @@ class Dataset:
         self.dataset = cfg.dataset
         self.filename_suffix = cfg.filename_suffix
 
+        self.num_train_use = cfg.num_train_use
+
         self.batch_size = cfg.batch_size
         self.train_workers = cfg.train_workers
         self.val_workers = cfg.train_workers
@@ -40,8 +42,7 @@ class Dataset:
 
     def trainLoader(self):
         train_file_names = sorted(glob.glob(os.path.join(self.data_root, self.dataset, 'train', '*' + self.filename_suffix)))
-        self.train_files = [torch.load(i) for i in train_file_names]
-        self.train_files = self.train_files[:80]
+        self.train_files = [torch.load(i) for i in train_file_names[:self.num_train_use]]
 
         logger.info('Training samples: {}'.format(len(self.train_files)))
 
@@ -52,8 +53,7 @@ class Dataset:
 
     def valLoader(self):
         val_file_names = sorted(glob.glob(os.path.join(self.data_root, self.dataset, 'val', '*' + self.filename_suffix)))
-        self.val_files = [torch.load(i) for i in val_file_names]
-        self.val_files = self.val_files[:20]
+        self.val_files = [torch.load(i) for i in val_file_names[:20]]
 
         logger.info('Validation samples: {}'.format(len(self.val_files)))
 

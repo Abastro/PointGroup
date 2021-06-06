@@ -1,0 +1,6 @@
+lib/
+
+*.c
+*.h
+*.actual
+*.expected
