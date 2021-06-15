@@ -164,7 +164,7 @@ class PointGroup(nn.Module):
         )
 
         #### semantic segmentation
-        self.semantic_linear = nn.Linear(m, classes) # bias(default): True
+        self.linear = nn.Linear(m, classes) # bias(default): True
 
         #### offset
         self.offset = nn.Sequential(
@@ -173,12 +173,6 @@ class PointGroup(nn.Module):
             nn.ReLU()
         )
         self.offset_linear = nn.Linear(m, 3, bias=True)
-
-        ### size
-        self.size_linear = nn.Sequential(
-            nn.Linear(m, 3)
-        ,   nn.ReLU()
-        )
 
         #### score branch
         self.score_unet = UBlock([m, 2*m], norm_fn, 2, block, indice_key_id=1)
@@ -281,7 +275,7 @@ class PointGroup(nn.Module):
         output_feats = output.features[input_map.long()]
 
         #### semantic segmentation
-        semantic_scores = self.semantic_linear(output_feats)   # (N, nClass), float
+        semantic_scores = self.linear(output_feats)   # (N, nClass), float
         semantic_preds = semantic_scores.max(1)[1]    # (N), long
         ret['semantic_scores'] = semantic_scores
 
@@ -314,6 +308,10 @@ class PointGroup(nn.Module):
                     self.cluster_radius, self.cluster_npoint_thre
                     , batch_idxs_, coords_, semantic_preds_
                 )
+                proposals_idx_shift = proposals_idx_shift.cpu()
+                proposals_offset_shift = proposals_offset_shift.cpu()
+                proposals_idx = proposals_idx.cpu()
+                proposals_offset = proposals_offset.cpu()
             else:
                 idx_shift, start_len_shift = pointgroup_ops.ballquery_batch_p(coords_ + pt_offsets_, batch_idxs_, batch_offsets_, self.cluster_radius, self.cluster_shift_meanActive)
                 proposals_idx_shift, proposals_offset_shift = pointgroup_ops.bfs_cluster(semantic_preds_cpu, idx_shift.cpu(), start_len_shift.cpu(), self.cluster_npoint_thre)
@@ -327,9 +325,8 @@ class PointGroup(nn.Module):
 
             if self.test_runtime:
                 with open('result/perf', 'a') as f:
-                    print("no")
                     spent = time.time() - old
-                    f.write("{}: {}".format(coords.size(1), spent))
+                    f.write("{}: {}\n".format(coords.size(0), spent))
 
             # Translate back from idxs
             proposals_idx_shift[:, 1] = object_idxs[proposals_idx_shift[:, 1].long()].int()

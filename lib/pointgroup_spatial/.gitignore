@@ -1,6 +1,6 @@
 lib/
 
-*.c
-*.h
 *.actual
 *.expected
+cluster
+cluster_test

@@ -12,7 +12,7 @@ DATA:
   classes: 20
   ignore_label: -100
 
-  num_train_use: 30
+  num_train_use: 100
 
   input_channel: 3
   scale: 50   # voxel_size = 1 / scale, scale 50(2cm)
@@ -62,12 +62,12 @@ GROUP:
   ### point grouping
   cuda_cluster_enable: true
 
-  cluster_radius: 0.05
+  cluster_radius: 0.03
   cluster_meanActive: 50
   cluster_shift_meanActive: 300
   cluster_npoint_thre: 50
 
-  prepare_epochs: 128 # original: 128
+  prepare_epochs: 5 # original: 128
 
 TEST:
   split: val
@@ -75,7 +75,7 @@ TEST:
   test_workers: 16
   test_seed: 567
 
-  test_runtime: true
+  test_runtime: false
 
   TEST_NMS_THRESH: 0.3
   TEST_SCORE_THRESH: 0.09
@@ -84,4 +84,4 @@ TEST:
   eval: True
   save_semantic: False
   save_pt_offsets: False
-  save_instance: True
+  save_instance: False

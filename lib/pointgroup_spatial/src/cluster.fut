@@ -96,34 +96,28 @@ let ballQuery [n] (nHashBit: i32) (radius: f32)
   let vox = map (map voxelOf) pos -- [n][3]i32
   let base = map (map baseOf) pos -- [n][3]i32
   let vhs = map asHash vox -- (vHash)
-  let vhPt = zip idxs vhs -- (pt, vHash)
-  let sorted = vhPt |> radix_sort_by_key snd (3 * nHashBit) i32.get_bit -- Sorts on vHash
+  let vhPt = zip vhs idxs -- (vHash, pt)
+  let sorted = vhPt |> radix_sort_by_key fst (3 * nHashBit) i32.get_bit -- Sorts on vHash
   let vHashToPt = mkSegsFromSort hashSize (unzip sorted) -- Segmented, vHash -> pt
-  let maxSeg = i64.maximum vHashToPt.segSize
+  --let maxSeg = i64.maximum vHashToPt.segSize
 
   -- Neighbor derivations
-  let nbs pos = tabulate 8 asOff |> map (map2 (+) pos) -- denotes the neighbors, i32[8][3]
-  let bringSeg s = tabulate maxSeg ( \i -> if i < vHashToPt.segSize[s]
-    then getEntry vHashToPt s i else missing )
-  let candidates = base -- candidates: [n][8][s]i32
-    |> map (nbs >-> map asHash) -- calcualtes vHash of neighbors
-    |> map (map bringSeg) -- queries correspondents
+  let nbs pos = tabulate 8 asOff |> map (map2 (+) pos) -- denotes the neighbor voxels, i32[8][3]
+  let candFrom = base |> map (nbs >-> map asHash) -- extract candidates from. i32[n][8]
+  let candFromFlat = candFrom |> map2 (\i-> map (\s -> (i, s))) idxs |> flatten -- from, to (i32, i32)[n*8]
+  let candSeged = expandSegs ( \(_, s) -> vHashToPt.segSize[s] ) (\(i, s) j -> (i, getEntry vHashToPt s j)) candFromFlat -- As n*8 segments
 
-  let maxBatch = 8 * maxSeg
-  let withSelf = maxBatch + 1
   -- sets those which does not satisfy predicate into missing
   let filterFn i j =
     if j == missing then missing
     else if isNeighbor i j then j else missing
-  let found = candidates -- found: [n][8*s]i32
-    |> map (flatten_to maxBatch)
-    |> map2 (\i -> map (filterFn i)) idxs -- filters out non-neighbors
-    |> map2 (\i arr -> (arr ++ [i]) :> [withSelf]i32) idxs -- Adds self
-    |> map (radix_sort i32.num_bits i32.get_bit)  -- sort the results
-  -- Note there is no duplicates as neighboring voxels attain different hashes
-  -- Also -1 comes last in the sorted array
-  let segSizes = found |> map (map (\j -> i32.bool (j != missing)) >-> i32.sum)
-  in  expandSegs (\v -> i64.i32 segSizes[v]) (\v i -> found[v, i]) idxs
+  let biasedKey (i, j) = if j == missing then -1 else combine i j
+  let distributed = candSeged.raw
+    |> map (\(s, j) -> (s, filterFn s j))
+    |> radix_sort_by_key biasedKey i64.num_bits i64.get_bit
+  let remainSize = map (\(_, j) -> i32.bool (j != missing)) distributed |> reduce (+) 0 |> i64.i32
+  let found = mkSegsFromSort n (unzip (take remainSize distributed))
+  in found
 
 
 -- | Clustering with neighbors, using modified version of Hash-to-Min algorithm.
@@ -174,10 +168,10 @@ let clusterWith [n] (thres: i32) (nbs: IndexSegs i32 [n][]) : IndexSegs i32 [][]
 
 -- | Cluster the points with corresponding position and labels.
 -- Returns a tuple (cluster_idxs, cluster_offsets)
--- cluster_idxs : [2][N]i32, cluster ids on [0], corresponding point indices on [1]
+-- cluster_idxs : [N][2]i32, cluster ids on [0], corresponding point indices on [1]
 -- cluster_offsets : [C+1]i32, offsets on the cluster designation
 entry clusterPoints [n] (nHashBit: i32) (radius: f32) (thres: i32)
-  (batches: [n]i32) (pos: [n][3]f32) (labels: [n]i32) : ([2][]i32, []i32) =
+  (batches: [n]i32) (pos: [n][3]f32) (labels: [n]i32) : ([][2]i32, []i32) =
   -- No labels are bigger than 2^16
   let batchedLabel batch label = (batch << 16) | (label & 0xffff)
   let nbs = ballQuery nHashBit radius pos (map2 batchedLabel batches labels)
@@ -185,5 +179,5 @@ entry clusterPoints [n] (nHashBit: i32) (radius: f32) (thres: i32)
   let nActive = length clusters.raw
   let ptIdxs = clusters.raw :> [nActive]i32
   let clusterIds = replicated_iota clusters.segSize :> [nActive]i64
-  in ([clusterIds |> map i32.i64, ptIdxs]
+  in ([clusterIds |> map i32.i64, ptIdxs] |> transpose
     , clusters.segInd ++ [nActive] |> map i32.i64)

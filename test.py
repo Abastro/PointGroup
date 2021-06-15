@@ -183,6 +183,7 @@ if __name__ == '__main__':
     exp_name = cfg.config.split('/')[-1][:-5]
     model_name = exp_name.split('_')[0]
     data_name = exp_name.split('_')[-1]
+    model_name = cfg.model_name
 
     ##### model
     logger.info('=> creating model ...')

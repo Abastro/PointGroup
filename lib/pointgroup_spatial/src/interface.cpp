@@ -5,7 +5,7 @@
 #include "cluster.h"
 
 /// Interfaces
-void initialize();
+void initialize(const int profile);
 void finalize();
 void clusterPoints (
     const int N
@@ -22,11 +22,15 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m){
 
 /// Implementations
 
+static int do_profile;
 static struct futhark_context *ctxt;
 
-void initialize()
-{
+void initialize(const int profile){
     struct futhark_context_config *config = futhark_context_config_new();
+    if(profile) {
+        futhark_context_config_set_profiling(config, 1);
+        do_profile = profile;
+    }
     ctxt = futhark_context_new(config);
     futhark_context_config_free(config);
 }
@@ -55,28 +59,32 @@ void clusterPoints (
     , at::Tensor cluster_idxs, at::Tensor cluster_offsets )
 {
     // Note: Both is row-major
-    struct futhark_i32_2d **fut_idxs = (struct futhark_i32_2d **) malloc(sizeof(void *));
-    struct futhark_i32_1d **fut_offsets = (struct futhark_i32_1d **) malloc(sizeof(void *));
+    struct futhark_i32_2d *fut_idxs;
+    struct futhark_i32_1d *fut_offsets;
     int32_t *raw_batches = batch_idxs.data_ptr<int32_t>();
     float *raw_pos = pos.data_ptr<float>();
     int32_t *raw_labels = labels.data_ptr<int32_t>(); // Need to check row-major, but.. laziness
-    const struct futhark_i32_1d *fut_batches = futhark_new_i32_1d(ctxt, raw_batches, N);
-    const struct futhark_f32_2d *fut_pos = futhark_new_f32_2d(ctxt, raw_pos, N, 3);
-    const struct futhark_i32_1d *fut_labels = futhark_new_i32_1d(ctxt, raw_labels, N);
+    struct futhark_i32_1d *fut_batches = futhark_new_i32_1d(ctxt, raw_batches, N);
+    struct futhark_f32_2d *fut_pos = futhark_new_f32_2d(ctxt, raw_pos, N, 3);
+    struct futhark_i32_1d *fut_labels = futhark_new_i32_1d(ctxt, raw_labels, N);
 
     // This function also automatically allocates the output ptr
-    futhark_entry_clusterPoints(ctxt, fut_idxs, fut_offsets
+    futhark_entry_clusterPoints(ctxt, &fut_idxs, &fut_offsets
         , nHashBit, radius, thres, fut_batches, fut_pos, fut_labels);
 
-    int nActive = (int) futhark_shape_i32_2d(ctxt, *fut_idxs)[1];
-    int nCluster = (int) futhark_shape_i32_1d(ctxt, *fut_offsets)[0];
+    int nActive = (int) futhark_shape_i32_2d(ctxt, fut_idxs)[0];
+    int nClusterAnd1 = (int) futhark_shape_i32_1d(ctxt, fut_offsets)[0];
     cluster_idxs.resize_({nActive, 2});
-    cluster_offsets.resize_({nCluster + 1});
-    futhark_values_i32_2d(ctxt, *fut_idxs, cluster_idxs.data_ptr<int32_t>());
-    futhark_values_i32_1d(ctxt, *fut_offsets, cluster_offsets.data_ptr<int32_t>());
+    cluster_offsets.resize_({nClusterAnd1});
+    int32_t *raw_idxs = cluster_idxs.data_ptr<int32_t>();
+    int32_t *raw_offsets = cluster_offsets.data_ptr<int32_t>();
+    futhark_values_i32_2d(ctxt, fut_idxs, raw_idxs);
+    futhark_values_i32_1d(ctxt, fut_offsets, raw_offsets);
 
-    futhark_free_i32_2d(ctxt, *fut_idxs);
-    futhark_free_i32_1d(ctxt, *fut_offsets);
-    free(fut_idxs);
-    free(fut_offsets);
+    futhark_free_i32_1d(ctxt, fut_batches);
+    futhark_free_f32_2d(ctxt, fut_pos);
+    futhark_free_i32_1d(ctxt, fut_labels);
+    futhark_context_clear_caches(ctxt);
+    if(do_profile)
+        printf("Log: %s\n", futhark_context_report(ctxt));
 }

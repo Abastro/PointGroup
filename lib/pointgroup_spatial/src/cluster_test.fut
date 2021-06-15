@@ -42,6 +42,15 @@ entry test_clusterWith (thres: i32) (numVert: i64) (graph_from: []i32) (graph_to
     in (clusterWith thres graph).raw
 
 -- ==
+-- entry: test_ballQuery
+-- input { 0.9f32 [[0.0f32, 0.0f32, 0.0f32], [0.5f32, 0.0f32, 0.0f32], [1.0f32, 0.0f32, 0.0f32], [1.5f32, 0.0f32, 0.0f32]] [0, 0, 0, 0] }
+-- output { [0, 1, 0, 1, 2, 1, 2, 3, 2, 3] }
+entry test_ballQuery (radius: f32) (pos: [][3]f32) (labels: []i32) =
+  let queried = ballQuery 4 radius pos labels
+  in queried.raw
+
+
+-- ==
 -- entry: test_elimDupesWith
 -- input { [1, 1, 1, 2, 3, 3, 5, 5, 5] }
 -- output { [1, 2, 3, 5] }
